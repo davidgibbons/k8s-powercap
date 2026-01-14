@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/davidgibbons/k8s-powercap/compare/v1.0.0...v1.0.1) (2026-01-14)
+
+
+### Bug Fixes
+
+* **Makefile:** add support for extra helm arguments in deploy command ([70c6b53](https://github.com/davidgibbons/k8s-powercap/commit/70c6b53f50ac5cd1a8d89a45172cc75db55bb318))
+
 # 1.0.0 (2026-01-14)
 
 
