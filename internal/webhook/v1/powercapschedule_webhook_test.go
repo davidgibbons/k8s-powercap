@@ -66,7 +66,7 @@ var _ = Describe("PowercapSchedule Webhook", func() {
 			{Zone: "intel-rapl:0", Constraint: "constraint_0", PowerLimit: 65000000},
 		}
 
-		It("Should accept valid single-point cron schedules", func() {
+		It("Should accept valid cron schedules", func() {
 			validSchedules := []string{
 				"0 9 * * 1",
 				"30 14 15 * *",
@@ -74,6 +74,10 @@ var _ = Describe("PowercapSchedule Webhook", func() {
 				"* * * * *",
 				"0 0 * * *",
 				"59 23 31 12 6",
+				"0 9 * * 1-5",      // M-F 9am (DOW range)
+				"0 9 1-15 * *",     // 9am, first half of month (DOM range)
+				"0 9 * 1-6 *",      // 9am, first half of year (month range)
+				"0 9 1-15 1-6 1-5", // Combined ranges (DOM, month, DOW)
 			}
 
 			for _, sched := range validSchedules {
@@ -100,7 +104,7 @@ var _ = Describe("PowercapSchedule Webhook", func() {
 				}
 				_, err := validator.ValidateCreate(ctx, obj)
 				Expect(err).To(HaveOccurred(), "Schedule %q should be rejected (comma lists not allowed)", sched)
-				Expect(err.Error()).To(ContainSubstring("single point in time"))
+				Expect(err.Error()).To(ContainSubstring("invalid format"))
 			}
 		})
 
@@ -117,16 +121,15 @@ var _ = Describe("PowercapSchedule Webhook", func() {
 				}
 				_, err := validator.ValidateCreate(ctx, obj)
 				Expect(err).To(HaveOccurred(), "Schedule %q should be rejected (step values not allowed)", sched)
-				Expect(err.Error()).To(ContainSubstring("single point in time"))
+				Expect(err.Error()).To(ContainSubstring("invalid format"))
 			}
 		})
 
-		It("Should reject range cron schedules", func() {
+		It("Should reject minute and hour range cron schedules", func() {
 			invalidSchedules := []string{
-				"0 9-17 * * *",
-				"0 9 * * 1-5",
-				"0-30 9 * * *",
-				"0 9 1-15 * *",
+				"0-30 9 * * *",    // minute range
+				"0 9-17 * * *",    // hour range
+				"0-59 0-23 * * *", // both minute and hour ranges
 			}
 
 			for _, sched := range invalidSchedules {
@@ -134,8 +137,8 @@ var _ = Describe("PowercapSchedule Webhook", func() {
 					{Name: "test", Schedule: sched, PowerLimits: validPowerLimits},
 				}
 				_, err := validator.ValidateCreate(ctx, obj)
-				Expect(err).To(HaveOccurred(), "Schedule %q should be rejected (ranges not allowed)", sched)
-				Expect(err.Error()).To(ContainSubstring("single point in time"))
+				Expect(err).To(HaveOccurred(), "Schedule %q should be rejected (minute/hour ranges not allowed)", sched)
+				Expect(err.Error()).To(ContainSubstring("minute and hour fields must be specific values"))
 			}
 		})
 

@@ -57,11 +57,11 @@ type PowercapRule struct {
 	Name string `json:"name"`
 
 	// Schedule is a cron expression defining when to apply the power limits.
-	// Must represent a single point in time (no ranges, lists, or step values).
+	// Minute and hour must be specific values; day/month/dow may use ranges.
 	// Format: "Minutes Hours Day-of-Month Month Day-of-Week"
-	// Example: "0 9 * * 1" (9 AM on Monday)
+	// Examples: "0 9 * * 1" (9 AM Monday), "0 9 * * 1-5" (9 AM Mon-Fri)
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern="^((\\d+|\\*) ){4}(\\d+|\\*)$"
+	// +kubebuilder:validation:Pattern="^(\\d+|\\*) (\\d+|\\*) (\\d+(-\\d+)?|\\*) (\\d+(-\\d+)?|\\*) (\\d+(-\\d+)?|\\*)$"
 	Schedule string `json:"schedule"`
 
 	// PowerLimits defines the power limits to apply for this schedule.

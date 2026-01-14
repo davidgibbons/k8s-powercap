@@ -123,8 +123,11 @@ func (v *PowercapScheduleCustomValidator) ValidateDelete(ctx context.Context, ob
 	return nil, nil
 }
 
-// singlePointCronPattern validates cron expressions: 5 fields, each a number or wildcard.
-var singlePointCronPattern = regexp.MustCompile(`^((\d+|\*) ){4}(\d+|\*)$`)
+// cronSchedulePattern validates cron expressions to prevent high-frequency triggers.
+// Minute and Hour fields: must be a specific number or wildcard (no ranges/steps/lists).
+// Day-of-month, Month, Day-of-week fields: allow ranges (e.g., 1-5 for weekdays) in addition to numbers and wildcards.
+// This allows "M-F 9am" (0 9 * * 1-5) while blocking "every 5 minutes" (*/5 * * * *) or hourly ranges (0 9-17 * * *).
+var cronSchedulePattern = regexp.MustCompile(`^(\d+|\*) (\d+|\*) (\d+(-\d+)?|\*) (\d+(-\d+)?|\*) (\d+(-\d+)?|\*)$`)
 
 // validateSchedules validates all schedules in the CRD.
 func (v *PowercapScheduleCustomValidator) validateSchedules(schedules []powercapv1.PowercapRule) (admission.Warnings, error) {
@@ -150,8 +153,8 @@ func (v *PowercapScheduleCustomValidator) validateSchedules(schedules []powercap
 			return nil, fmt.Errorf("invalid cron schedule %q in schedule %q: %w", schedule.Schedule, schedule.Name, err)
 		}
 
-		if !singlePointCronPattern.MatchString(schedule.Schedule) {
-			return nil, fmt.Errorf("schedule %q in schedule %q must represent a single point in time (no comma lists or step values)", schedule.Schedule, schedule.Name)
+		if !cronSchedulePattern.MatchString(schedule.Schedule) {
+			return nil, fmt.Errorf("schedule %q in schedule %q has invalid format: minute and hour fields must be specific values (no ranges/steps/lists); day/month/dow fields may use ranges", schedule.Schedule, schedule.Name)
 		}
 
 		if len(schedule.PowerLimits) == 0 {
