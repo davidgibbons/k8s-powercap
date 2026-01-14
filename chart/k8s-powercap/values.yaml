@@ -1,0 +1,82 @@
+# Default values for k8s-powercap
+replicaCount: 1
+
+image:
+  repository: ghcr.io/davidgibbons/k8s-powercap
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+  runAsUser: 65532
+  runAsGroup: 65532
+
+containerSecurityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+webhook:
+  enable: true
+  port: 9443
+  certDir: "/tmp/k8s-webhook-server/serving-certs"
+  certName: "tls.crt"
+  certKeyName: "tls.key"
+  certManager:
+    enabled: true
+    issuerRef: {}
+
+metrics:
+  enable: true
+  bindAddress: ":8080"
+  secureMetrics: true
+  certPath: ""
+  certName: "tls.crt"
+  certKeyName: "tls.key"
+
+healthProbe:
+  bindAddress: ":8081"
+
+leaderElect: true
+leaderElectionID: "478dfd91.k8s.io"
+
+# Agent image configuration
+agent:
+  image:
+    repository: ghcr.io/davidgibbons/k8s-powercap-agent
+    tag: ""
+  pullPolicy: IfNotPresent
+
+# Enable HTTP/2 for metrics and webhook servers
+enableHTTP2: false

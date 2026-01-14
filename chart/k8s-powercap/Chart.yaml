@@ -1,0 +1,19 @@
+apiVersion: v2
+name: k8s-powercap
+description: A Helm chart for k8s-powercap Kubernetes operator
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
+
+keywords:
+  - kubernetes
+  - operator
+  - powercap
+  - power-management
+
+maintainers:
+  - name: Derek Gibbons
+    email: derek@example.com
+
+sources:
+  - https://github.com/davidgibbons/k8s-powercap

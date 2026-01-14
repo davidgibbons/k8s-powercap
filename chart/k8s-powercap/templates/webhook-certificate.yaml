@@ -1,0 +1,35 @@
+{{- if and .Values.webhook.enable .Values.webhook.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "k8s-powercap.fullname" . }}-webhook-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "k8s-powercap.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "k8s-powercap.fullname" . }}-webhook-cert
+  dnsNames:
+    - {{ include "k8s-powercap.fullname" . }}-webhook-service
+    - {{ include "k8s-powercap.fullname" . }}-webhook-service.{{ .Release.Namespace }}
+    - {{ include "k8s-powercap.fullname" . }}-webhook-service.{{ .Release.Namespace }}.svc
+    - {{ include "k8s-powercap.fullname" . }}-webhook-service.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    {{- if .Values.webhook.certManager.issuerRef }}
+    {{- toYaml .Values.webhook.certManager.issuerRef | nindent 4 }}
+    {{- else }}
+    kind: Issuer
+    name: {{ include "k8s-powercap.fullname" . }}-selfsigned-issuer
+    {{- end }}
+---
+{{- if not .Values.webhook.certManager.issuerRef }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "k8s-powercap.fullname" . }}-selfsigned-issuer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "k8s-powercap.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+{{- end }}
+{{- end }}

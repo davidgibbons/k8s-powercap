@@ -1,0 +1,29 @@
+The k8s-powercap controller has been installed successfully!
+
+{{- if .Values.webhook.enable }}
+Webhooks are enabled and configured at:
+  Mutating Webhook: {{ include "k8s-powercap.fullname" . }}-mutating-webhook-configuration
+  Validating Webhook: {{ include "k8s-powercap.fullname" . }}-validating-webhook-configuration
+{{- else }}
+Webhooks are disabled.
+{{- end }}
+
+{{- if .Values.metrics.enable }}
+Metrics are enabled and available at:
+  http://{{ include "k8s-powercap.fullname" . }}-metrics-service.{{ .Release.Namespace }}.svc:8080/metrics
+{{- else }}
+Metrics are disabled.
+{{- end }}
+
+{{- if .Values.leaderElect }}
+Leader election is enabled.
+{{- else }}
+Leader election is disabled.
+{{- end }}
+
+To check the controller status, run:
+  kubectl get deployment {{ include "k8s-powercap.fullname" . }} -n {{ .Release.Namespace }}
+  kubectl logs -n {{ .Release.Namespace }} deployment/{{ include "k8s-powercap.fullname" . }}
+
+To uninstall the chart:
+  helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}

@@ -1,0 +1,16 @@
+apiVersion: powercap.k8s.io/v1
+kind: PowercapSchedule
+metadata:
+  name: workday-powercap
+  namespace: default
+spec:
+  timeZone: "America/Los_Angeles"
+  nodeSelector:
+    hardware: cpu
+  schedules:
+    - name: workday
+      schedule: "0 9 * * 1"
+      powerLimits:
+        - zone: "intel-rapl:0"
+          constraint: "constraint_0"
+          powerLimit: 65000000

@@ -1,0 +1,14 @@
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: Source Code
+      url: https://github.com/davidgibbons/k8s-powercap
+    - name: Support
+      url: https://github.com/davidgibbons/k8s-powercap/issues
+  artifacthub.io/operator: "true"
+  artifacthub.io/operatorCapabilities: Basic Install
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/changes: |
+    - Added Helm chart for easy deployment
+    - Fixed compilation errors in controller
+    - Regenerated deepcopy methods
