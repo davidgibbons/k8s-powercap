@@ -89,6 +89,12 @@ var _ = Describe("Manager", Ordered, func() {
 		}
 		Eventually(verifyWebhookEndpointsReady, 3*time.Minute, time.Second).Should(Succeed())
 
+		By("waiting for the controller-manager pod to be ready")
+		cmd = utils.Kubectl("wait", "pod", "-l", "control-plane=controller-manager",
+			"-n", namespace, "--for=condition=Ready", "--timeout=3m")
+		_, err = utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred(), "Controller pod not ready")
+
 		By("ensuring the PowercapSchedule CRD is up to date")
 		cmd = utils.Kubectl("apply", "-f", "config/crd/bases/powercap.k8s.io_powercapschedules.yaml")
 		_, err = utils.Run(cmd)
@@ -125,6 +131,11 @@ spec:
 		cmd := utils.Kubectl("delete", "pod", "curl-metrics", "-n", namespace)
 		_, _ = utils.Run(cmd)
 
+		By("cleaning up the PowercapSchedule")
+		cmd = utils.Kubectl("delete", "powercapschedules", powercapScheduleName,
+			"-n", namespace, "--ignore-not-found")
+		_, _ = utils.Run(cmd)
+
 		By("undeploying the controller-manager")
 		cmd = exec.Command("make", "undeploy")
 		_, _ = utils.Run(cmd)
@@ -141,13 +152,27 @@ spec:
 	AfterEach(func() {
 		specReport := CurrentSpecReport()
 		if specReport.Failed() {
+			var cmd *exec.Cmd
+			if controllerPodName == "" {
+				cmd = utils.Kubectl("get", "pods", "-l", "control-plane=controller-manager",
+					"-n", namespace, "-o", "jsonpath={.items[0].metadata.name}")
+				output, err := utils.Run(cmd)
+				if err == nil && output != "" {
+					controllerPodName = output
+				}
+			}
+
 			By("Fetching controller manager pod logs")
-			cmd := utils.Kubectl("logs", controllerPodName, "-n", namespace)
-			controllerLogs, err := utils.Run(cmd)
-			if err == nil {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Controller logs:\n %s", controllerLogs)
+			if controllerPodName != "" {
+				cmd = utils.Kubectl("logs", controllerPodName, "-n", namespace)
+				controllerLogs, err := utils.Run(cmd)
+				if err == nil {
+					_, _ = fmt.Fprintf(GinkgoWriter, "Controller logs:\n %s", controllerLogs)
+				} else {
+					_, _ = fmt.Fprintf(GinkgoWriter, "Failed to get Controller logs: %s", err)
+				}
 			} else {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Failed to get Controller logs: %s", err)
+				_, _ = fmt.Fprintf(GinkgoWriter, "Skipped controller logs: controller pod name not found")
 			}
 
 			By("Fetching Kubernetes events")
@@ -169,12 +194,16 @@ spec:
 			}
 
 			By("Fetching controller manager pod description")
-			cmd = utils.Kubectl("describe", "pod", controllerPodName, "-n", namespace)
-			podDescription, err := utils.Run(cmd)
-			if err == nil {
-				fmt.Println("Pod description:\n", podDescription)
+			if controllerPodName != "" {
+				cmd = utils.Kubectl("describe", "pod", controllerPodName, "-n", namespace)
+				podDescription, err := utils.Run(cmd)
+				if err == nil {
+					fmt.Println("Pod description:\n", podDescription)
+				} else {
+					fmt.Println("Failed to describe controller pod")
+				}
 			} else {
-				fmt.Println("Failed to describe controller pod")
+				fmt.Println("Skipped controller pod description: controller pod name not found")
 			}
 		}
 	})
