@@ -271,10 +271,11 @@ var _ = Describe("Manager", Ordered, func() {
 			Eventually(verifyMetricsAvailable, 2*time.Minute).Should(Succeed())
 		})
 
-		It("should provisioned cert-manager", func() {
+		It("should provision cert-manager", func() {
 			By("validating that cert-manager has the certificate Secret")
 			verifyCertManager := func(g Gomega) {
-				cmd := utils.Kubectl("get", "secrets", "webhook-server-cert", "-n", namespace)
+				secretName := fmt.Sprintf("%s-webhook-cert", serviceAccountName)
+				cmd := utils.Kubectl("get", "secrets", secretName, "-n", namespace)
 				_, err := utils.Run(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
 			}
