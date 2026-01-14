@@ -79,7 +79,7 @@ jobs:
           echo "IMAGE_TAG=${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact-action@v4
+        uses: actions/upload-artifact@v4
         with:
           name: image-info
           path: |
