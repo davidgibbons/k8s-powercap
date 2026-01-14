@@ -84,3 +84,39 @@ agent:
 
 # Enable HTTP/2 for metrics and webhook servers
 enableHTTP2: false
+
+powercapSchedule:
+  enabled: true
+  name: ""
+  timeZone: "UTC"
+  suspend: false
+  nodeSelector:
+    powercap: "true"
+  schedules:
+    - name: workday-shoulder
+      schedule: "0 7 * * 1-5"
+      powerLimits:
+        - zone: "intel-rapl:0"
+          constraint: "constraint_0"
+          powerLimit: 45000000
+        - zone: "intel-rapl:0"
+          constraint: "constraint_1"
+          powerLimit: 70000000
+    - name: workday-peak
+      schedule: "0 9 * * 1-5"
+      powerLimits:
+        - zone: "intel-rapl:0"
+          constraint: "constraint_0"
+          powerLimit: 35000000
+        - zone: "intel-rapl:0"
+          constraint: "constraint_1"
+          powerLimit: 60000000
+    - name: offpeak
+      schedule: "0 19 * * 1-5"
+      powerLimits:
+        - zone: "intel-rapl:0"
+          constraint: "constraint_0"
+          powerLimit: 55000000
+        - zone: "intel-rapl:0"
+          constraint: "constraint_1"
+          powerLimit: 80000000

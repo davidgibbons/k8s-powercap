@@ -181,6 +181,37 @@ ls /sys/class/powercap/intel-rapl:0
 # constraint_0  constraint_1  name  ...
 ```
 
+### Check Current Powercap Values (Talos)
+
+Talos does not expose host `/sys` directly, so use `talosctl`:
+
+```bash
+# List zones on a node
+talosctl ls /sys/class/powercap
+
+# Read current power limits (microwatts)
+talosctl read /sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw
+talosctl read /sys/class/powercap/intel-rapl:0/constraint_1_power_limit_uw
+```
+
+Example output and conversion to watts:
+
+```text
+55000000   # 55 W
+80000000   # 80 W
+```
+
+To convert microwatts to watts, divide by 1,000,000.
+
+On non-Talos nodes with direct access, you can run:
+
+```bash
+ls /sys/class/powercap
+for f in /sys/class/powercap/intel-rapl:*/constraint_*_power_limit_uw; do
+  echo "$f: $(cat $f)"
+done
+```
+
 ### Power Limit Units
 
 Power limits are specified in **microwatts (µW)**:
