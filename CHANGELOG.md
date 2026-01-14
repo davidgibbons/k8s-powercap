@@ -1,3 +1,12 @@
+# 1.0.0 (2026-01-14)
+
+
+### Bug Fixes
+
+* **.releaserc.json:** update GITHUB_REPOSITORY to process.env.GITHUB_REPOSITORY for environment variable support ([2dd1c93](https://github.com/davidgibbons/k8s-powercap/commit/2dd1c93660b4bb9ba8fd4220371806109b4f7048))
+* **e2e_test.go:** update kubectl command to use correct secret name for cert-manager verification ([8cc122e](https://github.com/davidgibbons/k8s-powercap/commit/8cc122e2784c179b2fba80138409e2d001caf19e))
+* **powercapschedule_types.go:** update cron expression documentation to allow day/month/dow ranges ([eb4d798](https://github.com/davidgibbons/k8s-powercap/commit/eb4d798608a76453cb7a24936b1384e97566069b))
+
 # Changelog
 
 All notable changes to this project are documented in this file.
