@@ -2,28 +2,8 @@ name: Build and Push Controller Image
 
 on:
   push:
-    branches:
-      - main
-      - 'v*'
     tags:
       - 'v*'
-    paths:
-      - 'cmd/**'
-      - 'internal/**'
-      - 'api/**'
-      - 'go.mod'
-      - 'go.sum'
-      - 'Dockerfile'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'cmd/**'
-      - 'internal/**'
-      - 'api/**'
-      - 'go.mod'
-      - 'go.sum'
-      - 'Dockerfile'
 
 env:
   REGISTRY: ghcr.io

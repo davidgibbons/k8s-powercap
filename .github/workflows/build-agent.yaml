@@ -2,26 +2,8 @@ name: Build and Push Agent Image
 
 on:
   push:
-    branches:
-      - main
-      - 'v*'
     tags:
       - 'v*'
-    paths:
-      - 'cmd/agent/**'
-      - 'pkg/powercap/**'
-      - 'go.mod'
-      - 'go.sum'
-      - 'Dockerfile.agent'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'cmd/agent/**'
-      - 'pkg/powercap/**'
-      - 'go.mod'
-      - 'go.sum'
-      - 'Dockerfile.agent'
 
 env:
   REGISTRY: ghcr.io

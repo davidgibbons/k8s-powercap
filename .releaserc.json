@@ -1,0 +1,33 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md"
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "perl -i -pe \"s/^version: .*/version: ${nextRelease.version}/\" chart/k8s-powercap/Chart.yaml && perl -i -pe \"s/^appVersion: .*/appVersion: \\\"${nextRelease.version}\\\"/\" chart/k8s-powercap/Chart.yaml && make build-installer IMG=ghcr.io/${GITHUB_REPOSITORY_OWNER}/k8s-powercap:${nextRelease.version}"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md", "chart/k8s-powercap/Chart.yaml"],
+        "message": "chore(release): v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": ["dist/install.yaml"]
+      }
+    ]
+  ]
+}
