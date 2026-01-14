@@ -38,14 +38,14 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v4
 
+      - name: Install Semantic Release plugins
+        run: |
+          npm init -y
+          npm install @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github --no-audit
+
       - name: Run Semantic Release
         uses: cycjimmy/semantic-release-action@v4
         with:
           semantic_version: 23
-          extra_plugins: |
-            @semantic-release/changelog
-            @semantic-release/exec
-            @semantic-release/git
-            @semantic-release/github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
