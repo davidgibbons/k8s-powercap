@@ -2,7 +2,11 @@ name: Tests
 
 on:
   push:
+    paths-ignore:
+      - '.github/**'
   pull_request:
+    paths-ignore:
+      - '.github/**'
 
 jobs:
   test:
