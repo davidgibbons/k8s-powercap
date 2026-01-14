@@ -158,6 +158,69 @@ var _ = Describe("PowercapSchedule Webhook", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("duplicate schedule name"))
 		})
+
+		It("Should accept valid timezones", func() {
+			validTimezones := []string{
+				"UTC",
+				"America/Los_Angeles",
+				"America/New_York",
+				"Europe/London",
+				"Europe/Paris",
+				"Asia/Tokyo",
+				"Australia/Sydney",
+			}
+
+			for _, tz := range validTimezones {
+				obj.Spec.TimeZone = tz
+				obj.Spec.Schedules = []powercapv1.PowercapRule{
+					{Name: "test", Schedule: "0 9 * * *", PowerLimits: validPowerLimits},
+				}
+				_, err := validator.ValidateCreate(ctx, obj)
+				Expect(err).NotTo(HaveOccurred(), "Timezone %q should be valid", tz)
+			}
+		})
+
+		It("Should accept empty timezone (defaults to UTC)", func() {
+			obj.Spec.TimeZone = ""
+			obj.Spec.Schedules = []powercapv1.PowercapRule{
+				{Name: "test", Schedule: "0 9 * * *", PowerLimits: validPowerLimits},
+			}
+			_, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should reject invalid timezones", func() {
+			invalidTimezones := []string{
+				"Invalid/Timezone",
+				"not-a-timezone",
+				"Fake/City",
+				"GMT+5",
+			}
+
+			for _, tz := range invalidTimezones {
+				obj.Spec.TimeZone = tz
+				obj.Spec.Schedules = []powercapv1.PowercapRule{
+					{Name: "test", Schedule: "0 9 * * *", PowerLimits: validPowerLimits},
+				}
+				_, err := validator.ValidateCreate(ctx, obj)
+				Expect(err).To(HaveOccurred(), "Timezone %q should be rejected", tz)
+				Expect(err.Error()).To(ContainSubstring("invalid timezone"))
+			}
+		})
+
+		It("Should reject invalid timezone on update", func() {
+			oldObj.Spec.TimeZone = "UTC"
+			oldObj.Spec.Schedules = []powercapv1.PowercapRule{
+				{Name: "test", Schedule: "0 9 * * *", PowerLimits: validPowerLimits},
+			}
+			obj.Spec.TimeZone = "Invalid/Zone"
+			obj.Spec.Schedules = []powercapv1.PowercapRule{
+				{Name: "test", Schedule: "0 9 * * *", PowerLimits: validPowerLimits},
+			}
+			_, err := validator.ValidateUpdate(ctx, oldObj, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid timezone"))
+		})
 	})
 
 })

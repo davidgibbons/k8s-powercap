@@ -88,7 +88,7 @@ enableHTTP2: false
 powercapSchedule:
   enabled: true
   name: ""
-  timeZone: "UTC"
+  timeZone: "America/Los_Angeles"
   suspend: false
   nodeSelector:
     powercap: "true"

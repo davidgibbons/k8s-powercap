@@ -96,7 +96,7 @@ func (v *PowercapScheduleCustomValidator) ValidateCreate(_ context.Context, obj 
 
 	powercapScheduleLog.Info("Validation for PowercapSchedule upon creation", "name", powercapschedule.GetName())
 
-	return v.validateSchedules(powercapschedule.Spec.Schedules)
+	return v.validateSpec(&powercapschedule.Spec)
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for type PowercapSchedule.
@@ -108,7 +108,7 @@ func (v *PowercapScheduleCustomValidator) ValidateUpdate(_ context.Context, oldO
 
 	powercapScheduleLog.Info("Validation for PowercapSchedule upon update", "name", powercapschedule.GetName())
 
-	return v.validateSchedules(powercapschedule.Spec.Schedules)
+	return v.validateSpec(&powercapschedule.Spec)
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for type PowercapSchedule.
@@ -128,6 +128,24 @@ func (v *PowercapScheduleCustomValidator) ValidateDelete(ctx context.Context, ob
 // Day-of-month, Month, Day-of-week fields: allow ranges (e.g., 1-5 for weekdays) in addition to numbers and wildcards.
 // This allows "M-F 9am" (0 9 * * 1-5) while blocking "every 5 minutes" (*/5 * * * *) or hourly ranges (0 9-17 * * *).
 var cronSchedulePattern = regexp.MustCompile(`^(\d+|\*) (\d+|\*) (\d+(-\d+)?|\*) (\d+(-\d+)?|\*) (\d+(-\d+)?|\*)$`)
+
+func (v *PowercapScheduleCustomValidator) validateSpec(spec *powercapv1.PowercapScheduleSpec) (admission.Warnings, error) {
+	if err := v.validateTimezone(spec.TimeZone); err != nil {
+		return nil, err
+	}
+	return v.validateSchedules(spec.Schedules)
+}
+
+func (v *PowercapScheduleCustomValidator) validateTimezone(tz string) error {
+	if tz == "" {
+		return nil
+	}
+	_, err := time.LoadLocation(tz)
+	if err != nil {
+		return fmt.Errorf("invalid timezone %q: %w", tz, err)
+	}
+	return nil
+}
 
 // validateSchedules validates all schedules in the CRD.
 func (v *PowercapScheduleCustomValidator) validateSchedules(schedules []powercapv1.PowercapRule) (admission.Warnings, error) {

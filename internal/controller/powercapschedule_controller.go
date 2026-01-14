@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -29,7 +30,7 @@ import (
 	cronv3 "github.com/robfig/cron/v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -54,6 +55,8 @@ const (
 	configHashAnnotation = "powercap.k8s.io/config-hash"
 )
 
+var ErrInvalidTimezone = errors.New("invalid timezone")
+
 func getAgentImage() string {
 	if img := os.Getenv(EnvironmentKeyAgentImage); img != "" {
 		return img
@@ -71,7 +74,7 @@ func (r *PowercapScheduleReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	ps := &powercapv1.PowercapSchedule{}
 	if err := r.Get(ctx, req.NamespacedName, ps); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.Info("PowercapSchedule not found, ignoring")
 			return ctrl.Result{}, nil
 		}
@@ -97,17 +100,21 @@ func (r *PowercapScheduleReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	nextRunTime, err := r.getNextScheduleTime(ps)
 	if err != nil {
 		log.Error(err, "unable to calculate next schedule time")
+		reason := powercapv1.ReasonScheduleError
+		if errors.Is(err, ErrInvalidTimezone) {
+			reason = powercapv1.ReasonTimezoneError
+		}
 		meta.SetStatusCondition(&ps.Status.Conditions, metav1.Condition{
 			Type:               powercapv1.ConditionReady,
 			Status:             metav1.ConditionFalse,
-			Reason:             "SchedulingError",
+			Reason:             reason,
 			Message:            err.Error(),
 			LastTransitionTime: metav1.Now(),
 		})
 		if updateErr := r.Status().Update(ctx, ps); updateErr != nil {
 			return ctrl.Result{}, updateErr
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
 	if _, err := r.createOrUpdateDaemonSet(ctx, ps); err != nil {
@@ -147,14 +154,14 @@ func (r *PowercapScheduleReconciler) handleDeletion(ctx context.Context, ps *pow
 
 	ds := &appsv1.DaemonSet{}
 	if err := r.Get(ctx, types.NamespacedName{Namespace: ps.Namespace, Name: dsName}, ds); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.Info("DaemonSet not found, nothing to delete")
 		} else {
 			log.Error(err, "failed to get DaemonSet for deletion")
 			return ctrl.Result{}, err
 		}
 	} else {
-		if err := r.Delete(ctx, ds); err != nil && !errors.IsNotFound(err) {
+		if err := r.Delete(ctx, ds); err != nil && !apierrors.IsNotFound(err) {
 			log.Error(err, "failed to delete DaemonSet")
 			return ctrl.Result{}, err
 		}
@@ -175,7 +182,7 @@ func (r *PowercapScheduleReconciler) handleSuspend(ctx context.Context, ps *powe
 
 	ds := &appsv1.DaemonSet{}
 	if err := r.Get(ctx, types.NamespacedName{Namespace: ps.Namespace, Name: dsName}, ds); err != nil {
-		if err := r.Delete(ctx, ds); err != nil && !errors.IsNotFound(err) {
+		if err := r.Delete(ctx, ds); err != nil && !apierrors.IsNotFound(err) {
 			log.Error(err, "failed to delete DaemonSet")
 			return ctrl.Result{}, err
 		}
@@ -185,7 +192,7 @@ func (r *PowercapScheduleReconciler) handleSuspend(ctx context.Context, ps *powe
 	meta.SetStatusCondition(&ps.Status.Conditions, metav1.Condition{
 		Type:               powercapv1.ConditionReady,
 		Status:             metav1.ConditionFalse,
-		Reason:             "Suspended",
+		Reason:             powercapv1.ReasonSuspended,
 		Message:            "PowercapSchedule is suspended",
 		LastTransitionTime: metav1.Now(),
 	})
@@ -201,8 +208,18 @@ func (r *PowercapScheduleReconciler) getNextScheduleTime(ps *powercapv1.Powercap
 		return time.Time{}, fmt.Errorf("no schedules defined")
 	}
 
+	// Load the timezone from spec, defaulting to UTC if empty
+	tz := ps.Spec.TimeZone
+	if tz == "" {
+		tz = "UTC"
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%w %q: %w", ErrInvalidTimezone, tz, err)
+	}
+
 	nextTimes := make([]time.Time, 0, len(ps.Spec.Schedules))
-	now := time.Now()
+	now := time.Now().In(loc)
 
 	parser := cronv3.NewParser(cronv3.Minute | cronv3.Hour | cronv3.Dom | cronv3.Month | cronv3.Dow)
 	for _, schedule := range ps.Spec.Schedules {
