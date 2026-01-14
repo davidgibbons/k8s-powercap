@@ -222,7 +222,7 @@ func (r *PowercapScheduleReconciler) getNextScheduleTime(ps *powercapv1.Powercap
 	}
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("%w %q: %w", ErrInvalidTimezone, tz, err)
+		return time.Time{}, fmt.Errorf("%w: timezone %q: %v", ErrInvalidTimezone, tz, err)
 	}
 
 	nextTimes := make([]time.Time, 0, len(ps.Spec.Schedules))
