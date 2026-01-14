@@ -13,7 +13,7 @@ jobs:
   build-controller:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
       id-token: write
 
@@ -65,13 +65,51 @@ jobs:
         run: |
           echo "IMAGE_TAG=${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-info
-          path: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            digest.txt
+      - name: Prepare release assets
+        run: |
+          echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" > controller-image.txt
+          echo "${{ steps.build.outputs.digest }}" > controller-digest.txt
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            controller-image.txt \
+            controller-digest.txt \
+            --clobber
+
+      - name: Update release notes with Docker links
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python - <<'PY'
+          import os
+          import textwrap
+          import json
+          import subprocess
+          repo = os.environ["GITHUB_REPOSITORY"]
+          tag = os.environ["RELEASE_TAG"]
+          image = f"ghcr.io/{repo}/k8s-powercap"
+          agent = f"ghcr.io/{repo}/k8s-powercap-agent"
+          section = textwrap.dedent(f"""
+          ## Docker Images
+          - {image}
+          - {agent}
+          """).strip()
+          release = json.loads(subprocess.check_output([
+              "gh", "api", f"repos/{repo}/releases/tags/{tag}"
+          ]))
+          body = release.get("body") or ""
+          if "## Docker Images" in body:
+              raise SystemExit(0)
+          new_body = body.rstrip() + ("\n\n" if body.strip() else "") + section + "\n"
+          subprocess.check_call([
+              "gh", "api", f"repos/{repo}/releases/{release['id']}",
+              "-X", "PATCH", "-f", f"body={new_body}"
+          ])
+          PY
 
     outputs:
       digest: ${{ steps.build.outputs.digest }}

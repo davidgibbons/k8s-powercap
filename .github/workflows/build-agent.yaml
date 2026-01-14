@@ -13,7 +13,7 @@ jobs:
   build-agent:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
       id-token: write
 
@@ -65,13 +65,19 @@ jobs:
         run: |
           echo "IMAGE_TAG=${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: agent-image-info
-          path: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            digest.txt
+      - name: Prepare release assets
+        run: |
+          echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" > agent-image.txt
+          echo "${{ steps.build.outputs.digest }}" > agent-digest.txt
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            agent-image.txt \
+            agent-digest.txt \
+            --clobber
 
     outputs:
       digest: ${{ steps.build.outputs.digest }}
