@@ -1,9 +1,9 @@
 name: Build and Push Controller Image
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types:
+      - published
 
 env:
   REGISTRY: ghcr.io
@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -39,6 +41,11 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
+      - name: Set image tag
+        run: |
+          TAG=${{ github.event.release.tag_name }}
+          echo "IMAGE_TAG=${TAG#v}" >> $GITHUB_ENV
+
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v6
@@ -46,8 +53,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-          labels: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          labels: ${{ steps.meta.outputs.labels }}
 
       - name: Generate image digest
         id: digest
@@ -56,16 +63,16 @@ jobs:
 
       - name: Create image tag
         run: |
-          echo "IMAGE_TAG=${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: image-info
           path: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
             digest.txt
 
     outputs:
       digest: ${{ steps.build.outputs.digest }}
-      image-tag: ${{ steps.meta.outputs.version }}
+      image-tag: ${{ env.IMAGE_TAG }}
