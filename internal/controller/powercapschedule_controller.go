@@ -182,6 +182,13 @@ func (r *PowercapScheduleReconciler) handleSuspend(ctx context.Context, ps *powe
 
 	ds := &appsv1.DaemonSet{}
 	if err := r.Get(ctx, types.NamespacedName{Namespace: ps.Namespace, Name: dsName}, ds); err != nil {
+		if apierrors.IsNotFound(err) {
+			log.Info("DaemonSet not found, nothing to delete for suspend", "name", dsName)
+		} else {
+			log.Error(err, "failed to get DaemonSet for suspend")
+			return ctrl.Result{}, err
+		}
+	} else {
 		if err := r.Delete(ctx, ds); err != nil && !apierrors.IsNotFound(err) {
 			log.Error(err, "failed to delete DaemonSet")
 			return ctrl.Result{}, err
