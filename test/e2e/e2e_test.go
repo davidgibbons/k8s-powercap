@@ -48,6 +48,8 @@ const metricsServicePort = 8080
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
 const metricsRoleBindingName = "k8s-powercap-metrics-binding"
 
+const powercapScheduleName = "e2e-powercap"
+
 var _ = Describe("Manager", Ordered, func() {
 	var controllerPodName string
 
@@ -69,9 +71,53 @@ var _ = Describe("Manager", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred(), "Failed to install CRDs")
 
 		By("deploying the controller-manager")
-		cmd = exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", projectImage))
+		cmd = exec.Command("make", "deploy",
+			fmt.Sprintf("IMG=%s", projectImage),
+			"HELM_EXTRA_ARGS=--set powercapSchedule.enabled=false",
+		)
 		_, err = utils.Run(cmd)
 		Expect(err).NotTo(HaveOccurred(), "Failed to deploy the controller-manager")
+
+		By("waiting for the webhook service endpoints to be ready")
+		verifyWebhookEndpointsReady := func(g Gomega) {
+			cmd := utils.Kubectl("get", "endpointslices.discovery.k8s.io", "-n", namespace,
+				"-l", "kubernetes.io/service-name=k8s-powercap-webhook-service",
+				"-o", "jsonpath={range .items[*]}{range .endpoints[*]}{.addresses[*]}{end}{end}")
+			output, err := utils.Run(cmd)
+			g.Expect(err).NotTo(HaveOccurred(), "Webhook endpoints should exist")
+			g.Expect(output).ShouldNot(BeEmpty(), "Webhook endpoints not yet ready")
+		}
+		Eventually(verifyWebhookEndpointsReady, 3*time.Minute, time.Second).Should(Succeed())
+
+		By("ensuring the PowercapSchedule CRD is up to date")
+		cmd = utils.Kubectl("apply", "-f", "config/crd/bases/powercap.k8s.io_powercapschedules.yaml")
+		_, err = utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred(), "Failed to apply PowercapSchedule CRD")
+
+		By("creating a PowercapSchedule to trigger agent creation")
+		powercapSchedulePath := filepath.Join(os.TempDir(), "powercapschedule-e2e.yaml")
+		powercapScheduleManifest := fmt.Sprintf(`apiVersion: powercap.k8s.io/v1
+kind: PowercapSchedule
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  timeZone: "UTC"
+  nodeSelector: {}
+  schedules:
+    - name: "workday"
+      schedule: "0 9 * * 1-5"
+      powerLimits:
+        - zone: "intel-rapl:0"
+          constraint: "constraint_0"
+          powerLimit: 45000000
+  suspend: false
+`, powercapScheduleName, namespace)
+		err = os.WriteFile(powercapSchedulePath, []byte(powercapScheduleManifest), os.FileMode(0o644))
+		Expect(err).NotTo(HaveOccurred(), "Failed to write PowercapSchedule manifest")
+		cmd = utils.Kubectl("apply", "-f", powercapSchedulePath)
+		_, err = utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred(), "Failed to apply PowercapSchedule")
 	})
 
 	AfterAll(func() {
@@ -165,6 +211,17 @@ var _ = Describe("Manager", Ordered, func() {
 				g.Expect(output).To(Equal("Running"), "Incorrect controller-manager pod status")
 			}
 			Eventually(verifyControllerUp).Should(Succeed())
+		})
+
+		It("should create the agent daemonset", func() {
+			By("waiting for the agent daemonset to be created")
+			daemonsetName := fmt.Sprintf("%s-daemon", powercapScheduleName)
+			verifyDaemonSetExists := func(g Gomega) {
+				cmd := utils.Kubectl("get", "daemonset", daemonsetName, "-n", namespace)
+				_, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred(), "Agent daemonset not created yet")
+			}
+			Eventually(verifyDaemonSetExists, 3*time.Minute, time.Second).Should(Succeed())
 		})
 
 		It("should ensure the metrics endpoint is serving metrics", func() {

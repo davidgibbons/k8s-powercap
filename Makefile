@@ -205,7 +205,8 @@ deploy: manifests ## Deploy controller to the K8s cluster specified in ~/.kube/c
 		--set metrics.servicePort="$(METRICS_SERVICE_PORT)" \
 		--set metrics.serviceName="$(METRICS_SERVICE_NAME)" \
 		--set metrics.bindAddress=":$(METRICS_PORT)" \
-		--set serviceAccount.name="$(SERVICE_ACCOUNT_NAME)"
+		--set serviceAccount.name="$(SERVICE_ACCOUNT_NAME)" \
+		$(HELM_EXTRA_ARGS)
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -231,6 +232,7 @@ HELM ?= helm
 CHART_DIR ?= chart/k8s-powercap
 HELM_RELEASE ?= k8s-powercap
 HELM_NAMESPACE ?= k8s-powercap-system
+HELM_EXTRA_ARGS ?=
 SERVICE_ACCOUNT_NAME ?= $(HELM_RELEASE)
 METRICS_SERVICE_NAME ?= $(HELM_RELEASE)-metrics-service
 METRICS_PORT ?= 8080
