@@ -69,7 +69,7 @@ spec:
               protocol: TCP
             {{- end }}
             {{- if .Values.metrics.enable }}
-            - containerPort: 8080
+            - containerPort: {{ .Values.metrics.port }}
               name: metrics
               protocol: TCP
             {{- end }}

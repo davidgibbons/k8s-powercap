@@ -38,56 +38,96 @@ var _ = Describe("Agent Config", func() {
 		})
 
 		It("should parse valid SCHEDULES_JSON", func() {
-			schedulesJSON := `[{"name":"test","schedule":"0 9 * * 1","powerLimits":[{"zone":"intel-rapl:0","constraint":"constraint_0","powerLimit":65000000}]}]`
-			os.Setenv("SCHEDULES_JSON", schedulesJSON)
-			os.Setenv("TIMEZONE", "UTC")
-			os.Setenv("NAMESPACE", "default")
-			os.Setenv("POD_NAME", "test-pod")
+			schedulesJSON := `[
+  {
+    "name": "test",
+    "schedule": "0 9 * * 1",
+    "powerLimits": [
+      {
+        "zone": "intel-rapl:0",
+        "constraint": "constraint_0",
+        "powerLimit": 65000000
+      }
+    ]
+  }
+]`
+			Expect(os.Setenv("SCHEDULES_JSON", schedulesJSON)).To(Succeed())
+			Expect(os.Setenv("TIMEZONE", "UTC")).To(Succeed())
+			Expect(os.Setenv("NAMESPACE", "default")).To(Succeed())
+			Expect(os.Setenv("POD_NAME", "test-pod")).To(Succeed())
 
-			config, err := loadConfig(logger)
+			config, err := loadConfig()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config).NotTo(BeNil())
-			Expect(len(config.Schedules)).To(Equal(1))
+			Expect(config.Schedules).To(HaveLen(1))
 			Expect(config.Schedules[0].Name).To(Equal("test"))
 		})
 
 		It("should error when SCHEDULES_JSON is missing", func() {
-			_, err := loadConfig(logger)
+			_, err := loadConfig()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("SCHEDULES_JSON"))
 		})
 
 		It("should error when SCHEDULES_JSON is invalid", func() {
-			os.Setenv("SCHEDULES_JSON", "{invalid json}")
+			Expect(os.Setenv("SCHEDULES_JSON", "{invalid json}")).To(Succeed())
 
-			_, err := loadConfig(logger)
+			_, err := loadConfig()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("parse"))
 		})
 
 		It("should error when schedule has no name", func() {
-			schedulesJSON := `[{"schedule":"0 9 * * 1","powerLimits":[{"zone":"intel-rapl:0","constraint":"constraint_0","powerLimit":65000000}]}]`
-			os.Setenv("SCHEDULES_JSON", schedulesJSON)
+			schedulesJSON := `[
+  {
+    "schedule": "0 9 * * 1",
+    "powerLimits": [
+      {
+        "zone": "intel-rapl:0",
+        "constraint": "constraint_0",
+        "powerLimit": 65000000
+      }
+    ]
+  }
+]`
+			Expect(os.Setenv("SCHEDULES_JSON", schedulesJSON)).To(Succeed())
 
-			_, err := loadConfig(logger)
+			_, err := loadConfig()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("name is required"))
 		})
 
 		It("should error when schedule has no power limits", func() {
-			schedulesJSON := `[{"name":"test","schedule":"0 9 * * 1","powerLimits":[]}]`
-			os.Setenv("SCHEDULES_JSON", schedulesJSON)
+			schedulesJSON := `[
+  {
+    "name": "test",
+    "schedule": "0 9 * * 1",
+    "powerLimits": []
+  }
+]`
+			Expect(os.Setenv("SCHEDULES_JSON", schedulesJSON)).To(Succeed())
 
-			_, err := loadConfig(logger)
+			_, err := loadConfig()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("power limit"))
 		})
 
 		It("should error when power limit is missing zone", func() {
-			schedulesJSON := `[{"name":"test","schedule":"0 9 * * 1","powerLimits":[{"constraint":"constraint_0","powerLimit":65000000}]}]`
-			os.Setenv("SCHEDULES_JSON", schedulesJSON)
+			schedulesJSON := `[
+  {
+    "name": "test",
+    "schedule": "0 9 * * 1",
+    "powerLimits": [
+      {
+        "constraint": "constraint_0",
+        "powerLimit": 65000000
+      }
+    ]
+  }
+]`
+			Expect(os.Setenv("SCHEDULES_JSON", schedulesJSON)).To(Succeed())
 
-			_, err := loadConfig(logger)
+			_, err := loadConfig()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("zone"))
 		})

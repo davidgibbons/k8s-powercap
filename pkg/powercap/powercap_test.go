@@ -25,6 +25,60 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
+type readLimitTestCase struct {
+	name                string
+	setupMockFilesystem func() (string, func())
+	zone                string
+	constraint          string
+	expectedLimit       int64
+	expectedError       bool
+}
+
+func runReadLimitTest(
+	t *testing.T,
+	tests []readLimitTestCase,
+	fileSuffix string,
+	readFunc func(*PowercapManager, string, string) (int64, error),
+) {
+	t.Helper()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir, cleanup := tt.setupMockFilesystem()
+			defer cleanup()
+
+			logger := zaptest.NewLogger(t).Sugar()
+			pm := NewPowercapManager(logger)
+
+			oldSysfsPath := sysfsPowercapPath
+			defer func() { sysfsPowercapPath = oldSysfsPath }()
+			sysfsPowercapPath = tmpDir
+
+			constraintName := tt.constraint
+			if constraintName == "" {
+				constraintName = defaultConstraint
+			}
+			limitFile := filepath.Join(tmpDir, tt.zone, constraintName+fileSuffix)
+			if err := os.WriteFile(limitFile, []byte(strconv.FormatInt(tt.expectedLimit, 10)), 0644); err != nil {
+				t.Fatalf("failed to write limit file: %v", err)
+			}
+
+			limit, err := readFunc(pm, tt.zone, tt.constraint)
+
+			if tt.expectedError && err == nil {
+				t.Errorf("expected error but got none")
+			}
+			if !tt.expectedError && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+
+			if !tt.expectedError && limit != tt.expectedLimit {
+				t.Errorf("expected limit %d, got %d", tt.expectedLimit, limit)
+			}
+		})
+	}
+}
+
 func TestSetPowerLimit(t *testing.T) {
 	tests := []struct {
 		name                string
@@ -42,14 +96,14 @@ func TestSetPowerLimit(t *testing.T) {
 				if err := os.MkdirAll(zoneDir, 0755); err != nil {
 					t.Fatalf("failed to create mock zone: %v", err)
 				}
-				limitFile := filepath.Join(zoneDir, "constraint_0_power_limit_uw")
+				limitFile := filepath.Join(zoneDir, defaultConstraint+"_power_limit_uw")
 				if err := os.WriteFile(limitFile, []byte("100000000"), 0644); err != nil {
 					t.Fatalf("failed to create mock limit file: %v", err)
 				}
 				return tmpDir, func() {}
 			},
 			zone:       "intel-rapl:0",
-			constraint: "constraint_0",
+			constraint: defaultConstraint,
 			powerLimit: 65000000,
 		},
 		{
@@ -60,7 +114,7 @@ func TestSetPowerLimit(t *testing.T) {
 				if err := os.MkdirAll(zoneDir, 0755); err != nil {
 					t.Fatalf("failed to create mock zone: %v", err)
 				}
-				limitFile := filepath.Join(zoneDir, "constraint_0_power_limit_uw")
+				limitFile := filepath.Join(zoneDir, defaultConstraint+"_power_limit_uw")
 				if err := os.WriteFile(limitFile, []byte("100000000"), 0644); err != nil {
 					t.Fatalf("failed to create mock limit file: %v", err)
 				}
@@ -96,7 +150,7 @@ func TestSetPowerLimit(t *testing.T) {
 			if !tt.expectedError {
 				constraintName := tt.constraint
 				if constraintName == "" {
-					constraintName = "constraint_0"
+					constraintName = defaultConstraint
 				}
 				limitFile := filepath.Join(tmpDir, tt.zone, constraintName+"_power_limit_uw")
 				data, err := os.ReadFile(limitFile)
@@ -115,14 +169,7 @@ func TestSetPowerLimit(t *testing.T) {
 }
 
 func TestReadCurrentPowerLimit(t *testing.T) {
-	tests := []struct {
-		name                string
-		setupMockFilesystem func() (string, func())
-		zone                string
-		constraint          string
-		expectedLimit       int64
-		expectedError       bool
-	}{
+	tests := []readLimitTestCase{
 		{
 			name: "successfully read power limit",
 			setupMockFilesystem: func() (string, func()) {
@@ -131,53 +178,18 @@ func TestReadCurrentPowerLimit(t *testing.T) {
 				if err := os.MkdirAll(zoneDir, 0755); err != nil {
 					t.Fatalf("failed to create mock zone: %v", err)
 				}
-				limitFile := filepath.Join(zoneDir, "constraint_0_power_limit_uw")
+				limitFile := filepath.Join(zoneDir, defaultConstraint+"_power_limit_uw")
 				if err := os.WriteFile(limitFile, []byte("65000000"), 0644); err != nil {
 					t.Fatalf("failed to create mock limit file: %v", err)
 				}
 				return tmpDir, func() {}
 			},
 			zone:          "intel-rapl:0",
-			constraint:    "constraint_0",
+			constraint:    defaultConstraint,
 			expectedLimit: 65000000,
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tmpDir, cleanup := tt.setupMockFilesystem()
-			defer cleanup()
-
-			logger := zaptest.NewLogger(t).Sugar()
-			pm := NewPowercapManager(logger)
-
-			oldSysfsPath := sysfsPowercapPath
-			defer func() { sysfsPowercapPath = oldSysfsPath }()
-			sysfsPowercapPath = tmpDir
-
-			constraintName := tt.constraint
-			if constraintName == "" {
-				constraintName = "constraint_0"
-			}
-			limitFile := filepath.Join(tmpDir, tt.zone, constraintName+"_power_limit_uw")
-			if err := os.WriteFile(limitFile, []byte(strconv.FormatInt(tt.expectedLimit, 10)), 0644); err != nil {
-				t.Fatalf("failed to write limit file: %v", err)
-			}
-
-			limit, err := pm.ReadCurrentPowerLimit(tt.zone, tt.constraint)
-
-			if tt.expectedError && err == nil {
-				t.Errorf("expected error but got none")
-			}
-			if !tt.expectedError && err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-
-			if !tt.expectedError && limit != tt.expectedLimit {
-				t.Errorf("expected limit %d, got %d", tt.expectedLimit, limit)
-			}
-		})
-	}
+	runReadLimitTest(t, tests, "_power_limit_uw", (*PowercapManager).ReadCurrentPowerLimit)
 }
 
 func TestValidatePowercapPath(t *testing.T) {
@@ -192,7 +204,7 @@ func TestValidatePowercapPath(t *testing.T) {
 			setupMockFilesystem: func() (string, func()) {
 				tmpDir := t.TempDir()
 				zoneDir := filepath.Join(tmpDir, "intel-rapl:0")
-				constraintDir := filepath.Join(zoneDir, "constraint_0")
+				constraintDir := filepath.Join(zoneDir, defaultConstraint)
 				if err := os.MkdirAll(constraintDir, 0755); err != nil {
 					t.Fatalf("failed to create mock filesystem: %v", err)
 				}
@@ -219,7 +231,7 @@ func TestValidatePowercapPath(t *testing.T) {
 			setupMockFilesystem: func() (string, func()) {
 				tmpDir := t.TempDir()
 				zoneDir := filepath.Join(tmpDir, "other-zone")
-				constraintDir := filepath.Join(zoneDir, "constraint_0")
+				constraintDir := filepath.Join(zoneDir, defaultConstraint)
 				if err := os.MkdirAll(constraintDir, 0755); err != nil {
 					t.Fatalf("failed to create mock filesystem: %v", err)
 				}
@@ -327,14 +339,7 @@ func TestListAvailableZones(t *testing.T) {
 }
 
 func TestGetMaxPowerLimit(t *testing.T) {
-	tests := []struct {
-		name                string
-		setupMockFilesystem func() (string, func())
-		zone                string
-		constraint          string
-		expectedMax         int64
-		expectedError       bool
-	}{
+	tests := []readLimitTestCase{
 		{
 			name: "successfully read max power limit",
 			setupMockFilesystem: func() (string, func()) {
@@ -343,51 +348,16 @@ func TestGetMaxPowerLimit(t *testing.T) {
 				if err := os.MkdirAll(zoneDir, 0755); err != nil {
 					t.Fatalf("failed to create mock zone: %v", err)
 				}
-				maxFile := filepath.Join(zoneDir, "constraint_0_max_power_uw")
+				maxFile := filepath.Join(zoneDir, defaultConstraint+"_max_power_uw")
 				if err := os.WriteFile(maxFile, []byte("100000000"), 0644); err != nil {
 					t.Fatalf("failed to create mock max file: %v", err)
 				}
 				return tmpDir, func() {}
 			},
-			zone:        "intel-rapl:0",
-			constraint:  "constraint_0",
-			expectedMax: 100000000,
+			zone:          "intel-rapl:0",
+			constraint:    defaultConstraint,
+			expectedLimit: 100000000,
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tmpDir, cleanup := tt.setupMockFilesystem()
-			defer cleanup()
-
-			logger := zaptest.NewLogger(t).Sugar()
-			pm := NewPowercapManager(logger)
-
-			oldSysfsPath := sysfsPowercapPath
-			defer func() { sysfsPowercapPath = oldSysfsPath }()
-			sysfsPowercapPath = tmpDir
-
-			constraintName := tt.constraint
-			if constraintName == "" {
-				constraintName = "constraint_0"
-			}
-			maxFile := filepath.Join(tmpDir, tt.zone, constraintName+"_max_power_uw")
-			if err := os.WriteFile(maxFile, []byte(strconv.FormatInt(tt.expectedMax, 10)), 0644); err != nil {
-				t.Fatalf("failed to write max file: %v", err)
-			}
-
-			max, err := pm.GetMaxPowerLimit(tt.zone, tt.constraint)
-
-			if tt.expectedError && err == nil {
-				t.Errorf("expected error but got none")
-			}
-			if !tt.expectedError && err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-
-			if !tt.expectedError && max != tt.expectedMax {
-				t.Errorf("expected max %d, got %d", tt.expectedMax, max)
-			}
-		})
-	}
+	runReadLimitTest(t, tests, "_max_power_uw", (*PowercapManager).GetMaxPowerLimit)
 }

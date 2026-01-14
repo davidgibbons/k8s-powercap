@@ -35,6 +35,19 @@ const (
 	defaultKindCluster = "kind"
 )
 
+// GetKindClusterName returns the Kind cluster name from environment or default
+func GetKindClusterName() string {
+	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
+		return v
+	}
+	return defaultKindCluster
+}
+
+// GetKubectlContext returns the kubectl context name for the Kind cluster
+func GetKubectlContext() string {
+	return "kind-" + GetKindClusterName()
+}
+
 func warnError(err error) {
 	_, _ = fmt.Fprintf(GinkgoWriter, "warning: %v\n", err)
 }
@@ -59,21 +72,27 @@ func Run(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
+// Kubectl creates a kubectl command with the correct context for the Kind cluster
+func Kubectl(args ...string) *exec.Cmd {
+	context := GetKubectlContext()
+	fullArgs := append([]string{"--context", context}, args...)
+	return exec.Command("kubectl", fullArgs...)
+}
+
 // UninstallCertManager uninstalls the cert manager
 func UninstallCertManager() {
 	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
-	cmd := exec.Command("kubectl", "delete", "-f", url)
+	cmd := Kubectl("delete", "-f", url)
 	if _, err := Run(cmd); err != nil {
 		warnError(err)
 	}
 
-	// Delete leftover leases in kube-system (not cleaned by default)
 	kubeSystemLeases := []string{
 		"cert-manager-cainjector-leader-election",
 		"cert-manager-controller",
 	}
 	for _, lease := range kubeSystemLeases {
-		cmd = exec.Command("kubectl", "delete", "lease", lease,
+		cmd = Kubectl("delete", "lease", lease,
 			"-n", "kube-system", "--ignore-not-found", "--force", "--grace-period=0")
 		if _, err := Run(cmd); err != nil {
 			warnError(err)
@@ -84,13 +103,11 @@ func UninstallCertManager() {
 // InstallCertManager installs the cert manager bundle.
 func InstallCertManager() error {
 	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
-	cmd := exec.Command("kubectl", "apply", "-f", url)
+	cmd := Kubectl("apply", "-f", url)
 	if _, err := Run(cmd); err != nil {
 		return err
 	}
-	// Wait for cert-manager-webhook to be ready, which can take time if cert-manager
-	// was re-installed after uninstalling on a cluster.
-	cmd = exec.Command("kubectl", "wait", "deployment.apps/cert-manager-webhook",
+	cmd = Kubectl("wait", "deployment.apps/cert-manager-webhook",
 		"--for", "condition=Available",
 		"--namespace", "cert-manager",
 		"--timeout", "5m",
@@ -103,7 +120,6 @@ func InstallCertManager() error {
 // IsCertManagerCRDsInstalled checks if any Cert Manager CRDs are installed
 // by verifying the existence of key CRDs related to Cert Manager.
 func IsCertManagerCRDsInstalled() bool {
-	// List of common Cert Manager CRDs
 	certManagerCRDs := []string{
 		"certificates.cert-manager.io",
 		"issuers.cert-manager.io",
@@ -113,14 +129,12 @@ func IsCertManagerCRDsInstalled() bool {
 		"challenges.acme.cert-manager.io",
 	}
 
-	// Execute the kubectl command to get all CRDs
-	cmd := exec.Command("kubectl", "get", "crds")
+	cmd := Kubectl("get", "crds")
 	output, err := Run(cmd)
 	if err != nil {
 		return false
 	}
 
-	// Check if any of the Cert Manager CRDs are present
 	crdList := GetNonEmptyLines(output)
 	for _, crd := range certManagerCRDs {
 		for _, line := range crdList {

@@ -154,10 +154,22 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	rm Dockerfile.cross
 
 .PHONY: build-installer
-build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
+build-installer: manifests generate ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
-	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
-	"$(KUSTOMIZE)" build config/default > dist/install.yaml
+	@img_repo="$(IMG)"; img_tag=""; img_args=""; \
+	if [ -n "$$img_repo" ]; then \
+		if echo "$$img_repo" | awk -F/ '{print $$NF}' | grep -q ':'; then \
+			img_tag="$${img_repo##*:}"; \
+			img_repo="$${img_repo%:*}"; \
+		fi; \
+		img_args="--set image.repository=$$img_repo"; \
+		if [ -n "$$img_tag" ]; then img_args="$$img_args --set image.tag=$$img_tag"; fi; \
+	fi; \
+	"$(HELM)" template "$(HELM_RELEASE)" "$(CHART_DIR)" \
+		--namespace "$(HELM_NAMESPACE)" \
+		--include-crds \
+		$$img_args \
+		> dist/install.yaml
 
 ##@ Deployment
 
@@ -176,13 +188,28 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 	if [ -n "$$out" ]; then echo "$$out" | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -; else echo "No CRDs to delete; skipping."; fi
 
 .PHONY: deploy
-deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
-	"$(KUSTOMIZE)" build config/default | "$(KUBECTL)" apply -f -
+deploy: manifests ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	@img_repo="$(IMG)"; img_tag=""; img_args=""; \
+	if [ -n "$$img_repo" ]; then \
+		if echo "$$img_repo" | awk -F/ '{print $$NF}' | grep -q ':'; then \
+			img_tag="$${img_repo##*:}"; \
+			img_repo="$${img_repo%:*}"; \
+		fi; \
+		img_args="--set image.repository=$$img_repo"; \
+		if [ -n "$$img_tag" ]; then img_args="$$img_args --set image.tag=$$img_tag"; fi; \
+	fi; \
+	"$(HELM)" upgrade --install "$(HELM_RELEASE)" "$(CHART_DIR)" \
+		--namespace "$(HELM_NAMESPACE)" \
+		$$img_args \
+		--set metrics.port="$(METRICS_PORT)" \
+		--set metrics.servicePort="$(METRICS_SERVICE_PORT)" \
+		--set metrics.serviceName="$(METRICS_SERVICE_NAME)" \
+		--set metrics.bindAddress=":$(METRICS_PORT)" \
+		--set serviceAccount.name="$(SERVICE_ACCOUNT_NAME)"
 
 .PHONY: undeploy
-undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	"$(KUSTOMIZE)" build config/default | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
+undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	"$(HELM)" uninstall "$(HELM_RELEASE)" --namespace "$(HELM_NAMESPACE)"
 
 ##@ Dependencies
 
@@ -198,6 +225,16 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+HELM ?= helm
+
+## Helm Defaults
+CHART_DIR ?= chart/k8s-powercap
+HELM_RELEASE ?= k8s-powercap
+HELM_NAMESPACE ?= k8s-powercap-system
+SERVICE_ACCOUNT_NAME ?= $(HELM_RELEASE)
+METRICS_SERVICE_NAME ?= $(HELM_RELEASE)-metrics-service
+METRICS_PORT ?= 8080
+METRICS_SERVICE_PORT ?= 8080
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.7.1

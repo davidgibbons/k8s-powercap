@@ -69,10 +69,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 	sugar := logger.Sugar()
 
-	config, err := loadConfig(sugar)
+	config, err := loadConfig()
 	if err != nil {
 		sugar.Fatalw("Failed to load configuration", "error", err)
 	}
@@ -106,11 +106,10 @@ func main() {
 	}
 
 	for _, rule := range config.Schedules {
-		rule := rule
 		_, err = c.AddFunc(rule.Schedule, func() {
 			sugar.Infow("Cron schedule triggered", "schedule_name", rule.Name)
 			for _, limit := range rule.PowerLimits {
-				if err := applyPowerLimit(pm, sugar, limit); err != nil {
+				if err := applyPowerLimit(pm, limit); err != nil {
 					sugar.Errorw("Failed to apply power limit",
 						"schedule_name", rule.Name,
 						"zone", limit.Zone,
@@ -156,7 +155,7 @@ func main() {
 	sugar.Info("Agent stopped")
 }
 
-func loadConfig(logger *zap.SugaredLogger) (*AgentConfig, error) {
+func loadConfig() (*AgentConfig, error) {
 	config := &AgentConfig{
 		TimeZone:  getEnvWithDefault("TIMEZONE", defaultTimeZone),
 		Namespace: os.Getenv("NAMESPACE"),
@@ -202,7 +201,7 @@ func loadConfig(logger *zap.SugaredLogger) (*AgentConfig, error) {
 	return config, nil
 }
 
-func applyPowerLimit(pm *powercap.PowercapManager, logger *zap.SugaredLogger, limit PowerLimitEntry) error {
+func applyPowerLimit(pm *powercap.PowercapManager, limit PowerLimitEntry) error {
 	max, err := pm.GetMaxPowerLimit(limit.Zone, limit.Constraint)
 	if err != nil {
 		return fmt.Errorf("failed to get max power limit: %w", err)

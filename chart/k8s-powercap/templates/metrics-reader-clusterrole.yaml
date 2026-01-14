@@ -1,0 +1,13 @@
+{{- if .Values.metrics.enable }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ default (printf "%s-metrics-reader" (include "k8s-powercap.fullname" .)) .Values.metrics.readerRoleName }}
+  labels:
+    {{- include "k8s-powercap.labels" . | nindent 4 }}
+rules:
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+{{- end }}

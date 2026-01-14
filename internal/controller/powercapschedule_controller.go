@@ -90,6 +90,10 @@ func (r *PowercapScheduleReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, nil
 	}
 
+	if ps.Spec.Suspend {
+		return r.handleSuspend(ctx, ps)
+	}
+
 	nextRunTime, err := r.getNextScheduleTime(ps)
 	if err != nil {
 		log.Error(err, "unable to calculate next schedule time")
@@ -293,12 +297,12 @@ func (r *PowercapScheduleReconciler) createOrUpdateDaemonSet(ctx context.Context
 			},
 		}
 
-	image := getAgentImage()
-	ds.Spec.Template.Spec.Containers = []corev1.Container{
-		{
-			Name:            "agent",
-			Image:           image,
-			ImagePullPolicy: corev1.PullIfNotPresent,
+		image := getAgentImage()
+		ds.Spec.Template.Spec.Containers = []corev1.Container{
+			{
+				Name:            "agent",
+				Image:           image,
+				ImagePullPolicy: corev1.PullIfNotPresent,
 				SecurityContext: &corev1.SecurityContext{
 					Privileged: func() *bool { b := true; return &b }(),
 				},

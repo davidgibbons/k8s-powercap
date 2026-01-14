@@ -28,7 +28,7 @@ env:
   IMAGE_NAME: davidgibbons/k8s-powercap-agent
 
 jobs:
-  build:
+  build-agent:
     runs-on: ubuntu-latest
     permissions:
       contents: read

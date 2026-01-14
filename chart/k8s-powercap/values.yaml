@@ -61,9 +61,13 @@ metrics:
   enable: true
   bindAddress: ":8080"
   secureMetrics: true
+  port: 8080
+  servicePort: 8080
+  serviceName: ""
   certPath: ""
   certName: "tls.crt"
   certKeyName: "tls.key"
+  readerRoleName: "k8s-powercap-metrics-reader"
 
 healthProbe:
   bindAddress: ":8081"

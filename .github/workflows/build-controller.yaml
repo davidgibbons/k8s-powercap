@@ -30,7 +30,7 @@ env:
   IMAGE_NAME: davidgibbons/k8s-powercap
 
 jobs:
-  build:
+  build-controller:
     runs-on: ubuntu-latest
     permissions:
       contents: read

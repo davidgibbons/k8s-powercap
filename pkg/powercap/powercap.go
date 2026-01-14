@@ -29,8 +29,9 @@ import (
 var sysfsPowercapPath = "/sys/class/powercap"
 
 const (
-	powerLimitFile = "constraint_0_power_limit_uw"
-	raplPrefix     = "intel-rapl"
+	defaultConstraint = "constraint_0"
+	powerLimitFile    = defaultConstraint + "_power_limit_uw"
+	raplPrefix        = "intel-rapl"
 )
 
 type PowercapManager struct {
@@ -50,7 +51,7 @@ func (p *PowercapManager) SetPowerLimit(zone, constraint string, powerLimitMicro
 
 	constraintName := constraint
 	if constraintName == "" {
-		constraintName = "constraint_0"
+		constraintName = defaultConstraint
 	}
 
 	limitFile := fmt.Sprintf("%s_power_limit_uw", constraintName)
@@ -88,7 +89,7 @@ func (p *PowercapManager) ReadCurrentPowerLimit(zone, constraint string) (int64,
 
 	constraintName := constraint
 	if constraintName == "" {
-		constraintName = "constraint_0"
+		constraintName = defaultConstraint
 	}
 
 	limitFile := fmt.Sprintf("%s_power_limit_uw", constraintName)
@@ -133,12 +134,12 @@ func (p *PowercapManager) ValidatePowercapPath(zone string) error {
 		)
 	}
 
-	constraintPath := filepath.Join(zonePath, "constraint_0")
+	constraintPath := filepath.Join(zonePath, defaultConstraint)
 	if _, err := os.Stat(constraintPath); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("constraint_0 does not exist in zone %s", zone)
+			return fmt.Errorf("%s does not exist in zone %s", defaultConstraint, zone)
 		}
-		return fmt.Errorf("failed to access constraint_0 in zone %s: %w", zone, err)
+		return fmt.Errorf("failed to access %s in zone %s: %w", defaultConstraint, zone, err)
 	}
 
 	return nil
@@ -171,7 +172,7 @@ func (p *PowercapManager) GetMaxPowerLimit(zone, constraint string) (int64, erro
 
 	constraintName := constraint
 	if constraintName == "" {
-		constraintName = "constraint_0"
+		constraintName = defaultConstraint
 	}
 
 	maxFile := fmt.Sprintf("%s_max_power_uw", constraintName)

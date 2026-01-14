@@ -1,0 +1,18 @@
+{{- if .Values.metrics.enable }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ default (printf "%s-metrics-service" (include "k8s-powercap.fullname" .)) .Values.metrics.serviceName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "k8s-powercap.labels" . | nindent 4 }}
+spec:
+  ports:
+    - port: {{ .Values.metrics.servicePort }}
+      targetPort: {{ .Values.metrics.port }}
+      protocol: TCP
+      name: https
+  selector:
+    control-plane: controller-manager
+    app.kubernetes.io/name: k8s-powercap
+{{- end }}
