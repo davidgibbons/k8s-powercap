@@ -101,17 +101,21 @@ func main() {
 		}
 	}
 
-	c := cron.New(cron.WithParser(cron.NewParser(
-		cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow,
-	)))
-
 	loc, err := time.LoadLocation(config.TimeZone)
 	if err != nil {
 		sugar.Warnw("Invalid timezone, using UTC", "timezone", config.TimeZone, "error", err)
 		loc = time.UTC
 	}
 
+	c := cron.New(
+		cron.WithLocation(loc),
+		cron.WithParser(cron.NewParser(
+			cron.Minute|cron.Hour|cron.Dom|cron.Month|cron.Dow,
+		)),
+	)
+
 	for _, rule := range config.Schedules {
+		rule := rule
 		_, err = c.AddFunc(rule.Schedule, func() {
 			sugar.Infow("Cron schedule triggered", "schedule_name", rule.Name)
 			for _, limit := range rule.PowerLimits {
