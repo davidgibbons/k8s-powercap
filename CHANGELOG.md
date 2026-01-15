@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/davidgibbons/k8s-powercap/compare/v1.1.0...v1.1.1) (2026-01-15)
+
+
+### Bug Fixes
+
+* **powercap.go:** add constraint parameter to ValidatePowercapPath function ([e4eda44](https://github.com/davidgibbons/k8s-powercap/commit/e4eda44f613fc3b7d9959f0b19a7b8f159f76e0f))
+
 # [1.1.0](https://github.com/davidgibbons/k8s-powercap/compare/v1.0.1...v1.1.0) (2026-01-15)
 
 
