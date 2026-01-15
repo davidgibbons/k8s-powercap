@@ -1,3 +1,16 @@
+# [1.1.0](https://github.com/davidgibbons/k8s-powercap/compare/v1.0.1...v1.1.0) (2026-01-15)
+
+
+### Bug Fixes
+
+* **e2e_test.go:** add wait for controller-manager pod to be ready in e2e tests ([ac30618](https://github.com/davidgibbons/k8s-powercap/commit/ac306184d9cb987b3479070cd4cc8d168d949e4f))
+
+
+### Features
+
+* **.github/workflows:** add support for workflow_dispatch event to workflows/build-agent.yaml and workflows/build-controller.yaml ([40c7620](https://github.com/davidgibbons/k8s-powercap/commit/40c76206d6d9a672f37d4a90bc9bf70c207fda0f))
+* **controller:** implement timezone-aware scheduling ([7578d7e](https://github.com/davidgibbons/k8s-powercap/commit/7578d7e9160cd93ee178b1baa2d314cd64efe1c6))
+
 ## [1.0.1](https://github.com/davidgibbons/k8s-powercap/compare/v1.0.0...v1.0.1) (2026-01-14)
 
 
