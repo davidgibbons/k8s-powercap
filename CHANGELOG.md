@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/davidgibbons/k8s-powercap/compare/v1.1.2...v1.1.3) (2026-01-15)
+
+
+### Bug Fixes
+
+* **main.go:** add entryID to map for efficient schedule name retrieval ([a0ee087](https://github.com/davidgibbons/k8s-powercap/commit/a0ee087bfbd13ec42df59542ba09f9ed86128052))
+
 ## [1.1.2](https://github.com/davidgibbons/k8s-powercap/compare/v1.1.1...v1.1.2) (2026-01-15)
 
 
