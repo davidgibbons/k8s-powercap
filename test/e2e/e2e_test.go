@@ -121,9 +121,12 @@ spec:
 `, powercapScheduleName, namespace)
 		err = os.WriteFile(powercapSchedulePath, []byte(powercapScheduleManifest), os.FileMode(0o644))
 		Expect(err).NotTo(HaveOccurred(), "Failed to write PowercapSchedule manifest")
-		cmd = utils.Kubectl("apply", "-f", powercapSchedulePath)
-		_, err = utils.Run(cmd)
-		Expect(err).NotTo(HaveOccurred(), "Failed to apply PowercapSchedule")
+		applyPowercapSchedule := func(g Gomega) {
+			cmd = utils.Kubectl("apply", "-f", powercapSchedulePath)
+			_, err = utils.Run(cmd)
+			g.Expect(err).NotTo(HaveOccurred(), "Failed to apply PowercapSchedule")
+		}
+		Eventually(applyPowercapSchedule, 3*time.Minute, time.Second).Should(Succeed())
 	})
 
 	AfterAll(func() {
