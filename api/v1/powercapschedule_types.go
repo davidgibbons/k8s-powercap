@@ -23,6 +23,10 @@ import (
 const (
 	ConditionReady  = "Ready"
 	ConditionActive = "Active"
+
+	ReasonTimezoneError = "TimezoneError"
+	ReasonScheduleError = "ScheduleError"
+	ReasonSuspended     = "Suspended"
 )
 
 // PowercapScheduleSpec defines the desired state of PowercapSchedule
