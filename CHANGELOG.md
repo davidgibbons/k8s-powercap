@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/davidgibbons/k8s-powercap/compare/v1.1.1...v1.1.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* **main.go:** remove unnecessary variable reassignment for rule in loop iteration ([c4ffe80](https://github.com/davidgibbons/k8s-powercap/commit/c4ffe804ffc7d5e5ce1ce7475218a4af8b66f1e0))
+
 ## [1.1.1](https://github.com/davidgibbons/k8s-powercap/compare/v1.1.0...v1.1.1) (2026-01-15)
 
 
