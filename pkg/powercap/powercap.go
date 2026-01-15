@@ -108,7 +108,7 @@ func (p *PowercapManager) ReadCurrentPowerLimit(zone, constraint string) (int64,
 	return limit, nil
 }
 
-func (p *PowercapManager) ValidatePowercapPath(zone string) error {
+func (p *PowercapManager) ValidatePowercapPath(zone, constraint string) error {
 	if zone == "" {
 		return fmt.Errorf("zone cannot be empty")
 	}
@@ -134,12 +134,24 @@ func (p *PowercapManager) ValidatePowercapPath(zone string) error {
 		)
 	}
 
-	constraintPath := filepath.Join(zonePath, defaultConstraint)
+	constraintName := constraint
+	if constraintName == "" {
+		constraintName = defaultConstraint
+	}
+
+	limitFile := filepath.Join(zonePath, fmt.Sprintf("%s_power_limit_uw", constraintName))
+	if _, err := os.Stat(limitFile); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to access %s in zone %s: %w", constraintName, zone, err)
+	}
+
+	constraintPath := filepath.Join(zonePath, constraintName)
 	if _, err := os.Stat(constraintPath); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("%s does not exist in zone %s", defaultConstraint, zone)
+			return fmt.Errorf("%s does not exist in zone %s", constraintName, zone)
 		}
-		return fmt.Errorf("failed to access %s in zone %s: %w", defaultConstraint, zone, err)
+		return fmt.Errorf("failed to access %s in zone %s: %w", constraintName, zone, err)
 	}
 
 	return nil

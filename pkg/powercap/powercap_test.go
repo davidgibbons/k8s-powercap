@@ -197,6 +197,7 @@ func TestValidatePowercapPath(t *testing.T) {
 		name                string
 		setupMockFilesystem func() (string, func())
 		zone                string
+		constraint          string
 		expectedError       bool
 	}{
 		{
@@ -204,13 +205,17 @@ func TestValidatePowercapPath(t *testing.T) {
 			setupMockFilesystem: func() (string, func()) {
 				tmpDir := t.TempDir()
 				zoneDir := filepath.Join(tmpDir, "intel-rapl:0")
-				constraintDir := filepath.Join(zoneDir, defaultConstraint)
-				if err := os.MkdirAll(constraintDir, 0755); err != nil {
+				if err := os.MkdirAll(zoneDir, 0755); err != nil {
 					t.Fatalf("failed to create mock filesystem: %v", err)
+				}
+				limitFile := filepath.Join(zoneDir, defaultConstraint+"_power_limit_uw")
+				if err := os.WriteFile(limitFile, []byte("65000000"), 0644); err != nil {
+					t.Fatalf("failed to create mock limit file: %v", err)
 				}
 				return tmpDir, func() {}
 			},
 			zone:          "intel-rapl:0",
+			constraint:    defaultConstraint,
 			expectedError: false,
 		},
 		{
@@ -224,6 +229,7 @@ func TestValidatePowercapPath(t *testing.T) {
 				return tmpDir, func() {}
 			},
 			zone:          "intel-rapl:99",
+			constraint:    defaultConstraint,
 			expectedError: true,
 		},
 		{
@@ -231,13 +237,17 @@ func TestValidatePowercapPath(t *testing.T) {
 			setupMockFilesystem: func() (string, func()) {
 				tmpDir := t.TempDir()
 				zoneDir := filepath.Join(tmpDir, "other-zone")
-				constraintDir := filepath.Join(zoneDir, defaultConstraint)
-				if err := os.MkdirAll(constraintDir, 0755); err != nil {
+				if err := os.MkdirAll(zoneDir, 0755); err != nil {
 					t.Fatalf("failed to create mock filesystem: %v", err)
+				}
+				limitFile := filepath.Join(zoneDir, defaultConstraint+"_power_limit_uw")
+				if err := os.WriteFile(limitFile, []byte("65000000"), 0644); err != nil {
+					t.Fatalf("failed to create mock limit file: %v", err)
 				}
 				return tmpDir, func() {}
 			},
 			zone:          "other-zone",
+			constraint:    defaultConstraint,
 			expectedError: false,
 		},
 		{
@@ -251,6 +261,7 @@ func TestValidatePowercapPath(t *testing.T) {
 				return tmpDir, func() {}
 			},
 			zone:          "intel-rapl:0",
+			constraint:    defaultConstraint,
 			expectedError: true,
 		},
 	}
@@ -267,7 +278,7 @@ func TestValidatePowercapPath(t *testing.T) {
 			defer func() { sysfsPowercapPath = oldSysfsPath }()
 			sysfsPowercapPath = tmpDir
 
-			err := pm.ValidatePowercapPath(tt.zone)
+			err := pm.ValidatePowercapPath(tt.zone, tt.constraint)
 
 			if tt.expectedError && err == nil {
 				t.Errorf("expected error but got none")

@@ -84,9 +84,15 @@ func main() {
 
 	pm := powercap.NewPowercapManager(sugar)
 
+	if zones, err := pm.ListAvailableZones(); err != nil {
+		sugar.Warnw("Failed to list available powercap zones", "error", err)
+	} else {
+		sugar.Infow("Available powercap zones", "zones", zones)
+	}
+
 	for _, rule := range config.Schedules {
 		for _, limit := range rule.PowerLimits {
-			if err := pm.ValidatePowercapPath(limit.Zone); err != nil {
+			if err := pm.ValidatePowercapPath(limit.Zone, limit.Constraint); err != nil {
 				sugar.Fatalw("Failed to validate powercap path",
 					"zone", limit.Zone,
 					"error", err,
