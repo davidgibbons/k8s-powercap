@@ -114,8 +114,9 @@ func main() {
 		)),
 	)
 
+	entryNameByID := make(map[cron.EntryID]string, len(config.Schedules))
 	for _, rule := range config.Schedules {
-		_, err = c.AddFunc(rule.Schedule, func() {
+		entryID, err := c.AddFunc(rule.Schedule, func() {
 			sugar.Infow("Cron schedule triggered", "schedule_name", rule.Name)
 			for _, limit := range rule.PowerLimits {
 				if err := applyPowerLimit(pm, limit); err != nil {
@@ -138,13 +139,19 @@ func main() {
 		if err != nil {
 			sugar.Fatalw("Failed to add cron schedule", "schedule_name", rule.Name, "error", err)
 		}
+		entryNameByID[entryID] = rule.Name
 		sugar.Infow("Registered schedule", "name", rule.Name, "cron", rule.Schedule)
 	}
 
 	c.Start()
 
 	for _, entry := range c.Entries() {
-		sugar.Infow("Next scheduled run", "at", entry.Next.In(loc).Format(time.RFC3339))
+		scheduleName := entryNameByID[entry.ID]
+		sugar.Infow("Next scheduled run",
+			"schedule_name", scheduleName,
+			"at", entry.Next.In(loc).Format(time.RFC3339),
+			"timezone", loc.String(),
+		)
 	}
 
 	sugar.Info("Agent started successfully")
