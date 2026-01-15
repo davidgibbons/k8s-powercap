@@ -322,6 +322,8 @@ func (r *PowercapScheduleReconciler) createOrUpdateDaemonSet(ctx context.Context
 		}
 
 		image := getAgentImage()
+		runAsUser := int64(0)
+		runAsGroup := int64(0)
 		ds.Spec.Template.Spec.Containers = []corev1.Container{
 			{
 				Name:            "agent",
@@ -329,6 +331,8 @@ func (r *PowercapScheduleReconciler) createOrUpdateDaemonSet(ctx context.Context
 				ImagePullPolicy: corev1.PullIfNotPresent,
 				SecurityContext: &corev1.SecurityContext{
 					Privileged: func() *bool { b := true; return &b }(),
+					RunAsUser:  &runAsUser,
+					RunAsGroup: &runAsGroup,
 				},
 				Env: []corev1.EnvVar{
 					{

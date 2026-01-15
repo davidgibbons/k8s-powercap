@@ -103,7 +103,7 @@ powercapSchedule:
           constraint: "constraint_1"
           powerLimit: 70000000
     - name: workday-peak
-      schedule: "0 9 * * 1-5"
+      schedule: "0 17 * * 1-5"
       powerLimits:
         - zone: "intel-rapl:0"
           constraint: "constraint_0"
@@ -112,7 +112,7 @@ powercapSchedule:
           constraint: "constraint_1"
           powerLimit: 60000000
     - name: offpeak
-      schedule: "0 19 * * 1-5"
+      schedule: "0 21 * * 1-5"
       powerLimits:
         - zone: "intel-rapl:0"
           constraint: "constraint_0"

@@ -119,7 +119,7 @@ func main() {
 		entryID, err := c.AddFunc(rule.Schedule, func() {
 			sugar.Infow("Cron schedule triggered", "schedule_name", rule.Name)
 			for _, limit := range rule.PowerLimits {
-				if err := applyPowerLimit(pm, limit); err != nil {
+				if err := applyPowerLimit(pm, limit, sugar); err != nil {
 					sugar.Errorw("Failed to apply power limit",
 						"schedule_name", rule.Name,
 						"zone", limit.Zone,
@@ -217,10 +217,19 @@ func loadConfig() (*AgentConfig, error) {
 	return config, nil
 }
 
-func applyPowerLimit(pm *powercap.PowercapManager, limit PowerLimitEntry) error {
+func applyPowerLimit(pm *powercap.PowercapManager, limit PowerLimitEntry, logger *zap.SugaredLogger) error {
 	max, err := pm.GetMaxPowerLimit(limit.Zone, limit.Constraint)
 	if err != nil {
 		return fmt.Errorf("failed to get max power limit: %w", err)
+	}
+
+	if max == 0 {
+		logger.Warnw("Max power limit is 0; attempting to set power limit anyway",
+			"zone", limit.Zone,
+			"constraint", limit.Constraint,
+			"max_power_uw", max,
+		)
+		return pm.SetPowerLimit(limit.Zone, limit.Constraint, limit.PowerLimit)
 	}
 
 	if limit.PowerLimit > max {
