@@ -223,8 +223,8 @@ func applyPowerLimit(pm *powercap.PowercapManager, limit PowerLimitEntry, logger
 		return fmt.Errorf("failed to get max power limit: %w", err)
 	}
 
-	if max == 0 {
-		logger.Warnw("Max power limit is 0; attempting to set power limit anyway",
+	if max <= 0 {
+		logger.Infow("Max power limit is not reported; treating as unconstrained",
 			"zone", limit.Zone,
 			"constraint", limit.Constraint,
 			"max_power_uw", max,
