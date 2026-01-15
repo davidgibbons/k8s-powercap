@@ -115,7 +115,6 @@ func main() {
 	)
 
 	for _, rule := range config.Schedules {
-		rule := rule
 		_, err = c.AddFunc(rule.Schedule, func() {
 			sugar.Infow("Cron schedule triggered", "schedule_name", rule.Name)
 			for _, limit := range rule.PowerLimits {
