@@ -1,3 +1,11 @@
+## [1.1.4](https://github.com/davidgibbons/k8s-powercap/compare/v1.1.3...v1.1.4) (2026-01-15)
+
+
+### Bug Fixes
+
+* **main.go:** update condition to check for max power limit less than or equal to 0 ([d7ee02c](https://github.com/davidgibbons/k8s-powercap/commit/d7ee02c05afe72c32447a91b310ff76a9cae734a))
+* **values.yaml:** update schedule times for workday-peak and offpeak power limits to 17:00 and 21:00 respectively ([8fd4ae1](https://github.com/davidgibbons/k8s-powercap/commit/8fd4ae1f8c9e2849b93440dfb621fdab65afc4f9))
+
 ## [1.1.3](https://github.com/davidgibbons/k8s-powercap/compare/v1.1.2...v1.1.3) (2026-01-15)
 
 
